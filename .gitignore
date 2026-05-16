@@ -1,0 +1,24 @@
+# Build artifacts
+/target/
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Daemon runtime state (user-specific, not part of the plugin)
+daemon.pid
+daemon.log
+daemon.err.log
+
+# Cached sounds (downloaded at runtime)
+sounds/

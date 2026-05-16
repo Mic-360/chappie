@@ -1,0 +1,22 @@
+[package]
+name = "chappie-daemon"
+version = "1.1.0"
+edition = "2021"
+description = "🎹 Chappie Audio Daemon — Mechanical keyboard sound engine for Claude Code"
+license = "MIT"
+authors = ["Chappie Contributors"]
+
+[[bin]]
+name = "chappie-daemon"
+path = "src/main.rs"
+
+[dependencies]
+rodio = "0.19"
+rand = "0.8"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"
