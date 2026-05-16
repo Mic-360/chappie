@@ -1,0 +1,37 @@
+{
+  "name": "chappie-marketplace",
+  "description": "Chappie — Mechanical keyboard sound effects for Claude Code",
+  "version": "1.1.0",
+  "owner": {
+    "name": "Bhaumic",
+    "email": "connect@bhaumicsingh.dev"
+  },
+  "plugins": [
+    {
+      "name": "chappie",
+      "source": {
+        "source": "github",
+        "repo": "mic-360/chappie"
+      },
+      "description": "Dynamic mechanical keyboard (Blue Switch) sound effects for Claude Code. Plays realistic typing sounds while Claude generates responses, pauses on permission requests with an alert ding.",
+      "version": "1.1.0",
+      "author": {
+        "name": "Bhaumic"
+      },
+      "homepage": "https://mic-360.github.io/chappie",
+      "repository": "https://github.com/mic-360/chappie",
+      "license": "MIT",
+      "keywords": [
+        "audio",
+        "keyboard",
+        "mechanical-keyboard",
+        "blue-switch",
+        "sound-effects",
+        "typing",
+        "blue-switch"
+      ],
+      "category": "productivity",
+      "tags": ["audio", "ambient", "typing-sounds"]
+    }
+  ]
+}
