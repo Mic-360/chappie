@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chappie — Mechanical keyboard sounds for Claude Code</title>
+<meta name="description" content="Chappie is a Claude Code plugin that plays realistic Blue Switch mechanical keyboard sounds while Claude works, and a gentle alert ding when it needs your approval." />
+<meta name="theme-color" content="#0d0d0f" />
+<meta property="og:title" content="Chappie — Mechanical keyboard sounds for Claude Code" />
+<meta property="og:description" content="Realistic Blue Switch typing sounds while Claude works. A Rust-powered audio daemon driven by native Claude Code hooks." />
+<meta property="og:image" content="chappie.png" />
+<meta property="og:type" content="website" />
+<link rel="icon" href="chappie.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #0d0d0f;
+    --bg-2:      #121214;
+    --surface:   #161618;
+    --surface-2: #1c1c20;
+    --line:      #2a2a2e;
+    --ink:       #ecebe6;
+    --muted:     #8d8d87;
+    --faint:     #5a5a56;
+    --blue:      #6ea8ff;
+    --blue-deep: #3f6fd6;
+    --amber:     #ffb454;
+    --keycap-hi: #303034;
+    --keycap-lo: #1a1a1d;
+    --radius:    14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 15px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* grain overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: .035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  ::selection { background: var(--blue); color: #0d0d0f; }
+
+  a { color: inherit; }
+
+  h1, h2, h3 {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 800;
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+
+  .mono-label {
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--blue);
+    font-weight: 700;
+  }
+
+  /* ---------- keycap primitive ---------- */
+  .keycap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "JetBrains Mono", monospace;
+    font-weight: 700;
+    background: linear-gradient(170deg, var(--keycap-hi), var(--keycap-lo));
+    border: 1px solid #000;
+    border-radius: 9px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.07),
+      0 4px 0 #060607,
+      0 6px 10px rgba(0,0,0,.55);
+    color: var(--ink);
+    cursor: pointer;
+    user-select: none;
+    transition: transform .06s ease, box-shadow .06s ease;
+  }
+  .keycap:active, .keycap.pressed {
+    transform: translateY(4px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.05),
+      0 0 0 #060607,
+      0 2px 6px rgba(0,0,0,.5);
+  }
+
+  /* ---------- nav ---------- */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    background: rgba(13,13,15,.78);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .wrap {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    height: 64px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+  }
+  .brand img { width: 30px; height: 30px; border-radius: 7px; }
+  .nav-links { margin-left: auto; display: flex; gap: 26px; }
+  .nav-links a {
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 13px;
+    transition: color .2s;
+  }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta {
+    text-decoration: none;
+    background: var(--blue);
+    color: #0d0d0f !important;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    transition: transform .12s, filter .2s;
+  }
+  .nav-cta:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  @media (max-width: 720px) { .nav-links a:not(.nav-cta) { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero {
+    position: relative;
+    padding: 96px 0 70px;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    top: -180px; left: 50%;
+    transform: translateX(-50%);
+    width: 760px; height: 760px;
+    background: radial-gradient(circle, rgba(110,168,255,.16), transparent 62%);
+    pointer-events: none;
+  }
+  .hero .wrap { position: relative; z-index: 1; }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: 56px;
+    align-items: center;
+  }
+  @media (max-width: 880px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 100px;
+    padding: 6px 14px 6px 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .badge .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--blue);
+    box-shadow: 0 0 10px var(--blue);
+    animation: blink 1.8s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  .hero h1 {
+    font-size: clamp(46px, 8vw, 86px);
+    margin: 22px 0 0;
+  }
+  .hero h1 .clk { color: var(--blue); }
+  .hero h1 .ding { color: var(--amber); }
+
+  .hero p.lede {
+    color: var(--muted);
+    font-size: 16px;
+    max-width: 30em;
+    margin: 20px 0 0;
+  }
+
+  .install {
+    margin-top: 30px;
+    display: flex;
+    align-items: stretch;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: 440px;
+  }
+  .install code {
+    flex: 1;
+    padding: 13px 16px;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+  .install code .pfx { color: var(--faint); }
+  .install button {
+    border: 0;
+    border-left: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 0 16px;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .install button:hover { background: var(--blue); color: #0d0d0f; }
+
+  .hero-actions {
+    margin-top: 18px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 12px 20px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform .12s, border-color .2s, background .2s;
+  }
+  .btn:hover { transform: translateY(-2px); border-color: var(--blue); }
+  .btn.primary { background: var(--blue); color: #0d0d0f; border-color: var(--blue); }
+
+  /* ---------- interactive demo panel ---------- */
+  .demo {
+    background: linear-gradient(180deg, var(--surface), var(--bg-2));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,.9);
+  }
+  .demo-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .demo-head .ttl { font-size: 12px; color: var(--muted); letter-spacing: .12em; }
+  .traffic { display: flex; gap: 6px; }
+  .traffic i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+
+  .scr {
+    background: #0a0a0b;
+    border: 1px solid #000;
+    border-radius: 10px;
+    padding: 16px;
+    min-height: 92px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .scr .who { color: var(--blue); }
+  .scr .out { color: var(--ink); }
+  .caret {
+    display: inline-block;
+    width: 8px; height: 15px;
+    background: var(--blue);
+    vertical-align: -2px;
+    animation: caret 1s steps(2) infinite;
+  }
+  .caret.alerting { background: var(--amber); }
+  @keyframes caret { 50% { opacity: 0; } }
+
+  .state-row {
+    display: flex;
+    gap: 8px;
+    margin: 14px 0 16px;
+  }
+  .state-row .pill {
+    flex: 1;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    padding: 7px 4px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    color: var(--faint);
+    transition: all .2s;
+  }
+  .state-row .pill.on-blue { color: #0d0d0f; background: var(--blue); border-color: var(--blue); }
+  .state-row .pill.on-amber { color: #0d0d0f; background: var(--amber); border-color: var(--amber); }
+
+  .keyboard {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .keyboard .keycap { width: 38px; height: 38px; font-size: 14px; }
+  .keyboard .keycap.space {
+    width: 100%;
+    height: 30px;
+    font-size: 10px;
+    letter-spacing: .3em;
+    color: var(--faint);
+  }
+  .demo-hint {
+    text-align: center;
+    color: var(--faint);
+    font-size: 11px;
+    margin-top: 12px;
+  }
+
+  /* ---------- section scaffolding ---------- */
+  section { padding: 84px 0; border-top: 1px solid var(--line); }
+  .sec-head { max-width: 40em; margin-bottom: 46px; }
+  .sec-head h2 { font-size: clamp(30px, 4.4vw, 46px); margin: 12px 0 0; }
+  .sec-head p { color: var(--muted); margin-top: 14px; }
+
+  /* ---------- features ---------- */
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 880px) { .feat-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .feat-grid { grid-template-columns: 1fr; } }
+
+  .feat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: transform .18s, border-color .2s;
+  }
+  .feat:hover { transform: translateY(-4px); border-color: var(--blue-deep); }
+  .feat .num {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 13px;
+    color: var(--faint);
+  }
+  .feat .ico {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    margin: 10px 0 16px;
+  }
+  .feat h3 { font-size: 18px; }
+  .feat p { color: var(--muted); font-size: 13.5px; margin-top: 9px; }
+  .feat.span-blue::before, .feat.span-amber::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .feat.span-blue::before { background: var(--blue); }
+  .feat.span-amber::before { background: var(--amber); }
+
+  /* ---------- how it works ---------- */
+  .flow-diagram {
+    background: #0a0a0b;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 30px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 30px;
+  }
+  @media (max-width: 760px) {
+    .flow-diagram { grid-template-columns: 1fr; }
+    .flow-diagram .arrow { transform: rotate(90deg); justify-self: center; }
+  }
+  .flow-node {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 18px;
+    text-align: center;
+  }
+  .flow-node .nt { font-size: 11px; color: var(--blue); letter-spacing: .14em; text-transform: uppercase; }
+  .flow-node .nm { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 16px; margin: 8px 0 6px; }
+  .flow-node .nd { font-size: 12px; color: var(--muted); }
+  .flow-node.accent { border-color: var(--blue-deep); box-shadow: 0 0 30px -12px var(--blue); }
+  .arrow { color: var(--faint); font-size: 22px; text-align: center; }
+
+  /* ---------- tables ---------- */
+  .tbl-shell {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    overflow-x: auto;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: var(--surface-2);
+    text-align: left;
+    padding: 13px 18px;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 13px 18px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    vertical-align: top;
+  }
+  tbody tr { background: var(--surface); transition: background .15s; }
+  tbody tr:hover { background: var(--surface-2); }
+  td .k, th .k { color: var(--ink); font-weight: 700; }
+  td .sig {
+    color: var(--blue);
+    font-weight: 700;
+  }
+  td .sig.alert { color: var(--amber); }
+
+  /* ---------- rhythm ---------- */
+  .rhythm-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 760px) { .rhythm-grid { grid-template-columns: 1fr; } }
+  .flow-state {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 24px;
+  }
+  .flow-state .label {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+  }
+  .flow-state .ms { color: var(--blue); font-size: 13px; margin-top: 4px; }
+  .flow-state .bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface-2);
+    margin: 16px 0 12px;
+    overflow: hidden;
+  }
+  .flow-state .bar span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue-deep), var(--blue));
+    border-radius: 3px;
+  }
+  .flow-state p { color: var(--muted); font-size: 13px; }
+
+  .rhythm-traits {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 620px) { .rhythm-traits { grid-template-columns: 1fr; } }
+  .trait {
+    display: flex;
+    gap: 12px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  .trait .tg { color: var(--blue); font-size: 18px; }
+  .trait b { font-family: "Bricolage Grotesque", sans-serif; font-size: 14px; }
+  .trait small { color: var(--muted); display: block; font-size: 12px; }
+
+  /* ---------- install steps ---------- */
+  .steps { display: grid; gap: 14px; }
+  .step {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 20px;
+    align-items: start;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+  }
+  .step .keycap {
+    width: 44px; height: 44px;
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 18px;
+    color: var(--blue);
+  }
+  .step h3 { font-size: 17px; }
+  .step p { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .codeblock {
+    margin-top: 12px;
+    background: #0a0a0b;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 12px 15px;
+    font-size: 12.5px;
+    color: var(--ink);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .codeblock .cmt { color: var(--faint); }
+  .codeblock .cmd { color: var(--blue); }
+
+  /* ---------- credits ---------- */
+  .credit-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 760px) { .credit-grid { grid-template-columns: 1fr; } }
+  .credit {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    padding: 22px;
+  }
+  .credit .role { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+  .credit h3 { font-size: 16px; margin: 8px 0 6px; }
+  .credit p { color: var(--muted); font-size: 12.5px; }
+  .credit a { color: var(--blue); text-decoration: none; font-size: 12.5px; }
+  .credit a:hover { text-decoration: underline; }
+
+  /* ---------- CTA ---------- */
+  .cta-band {
+    text-align: center;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(110,168,255,.14), transparent 60%),
+      var(--bg-2);
+  }
+  .cta-band h2 { font-size: clamp(32px, 5vw, 56px); }
+  .cta-band p { color: var(--muted); margin: 16px auto 28px; max-width: 32em; }
+
+  /* ---------- footer ---------- */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 40px 0;
+  }
+  footer .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    color: var(--faint);
+    font-size: 12px;
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+  .foot-links { display: flex; gap: 22px; }
+
+  /* reveal */
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* hero stagger */
+  .hero .stagger > * { opacity: 0; animation: rise .7s forwards; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
+  .hero .stagger > *:nth-child(1) { animation-delay: .05s; transform: translateY(16px); }
+  .hero .stagger > *:nth-child(2) { animation-delay: .14s; transform: translateY(16px); }
+  .hero .stagger > *:nth-child(3) { animation-delay: .23s; transform: translateY(16px); }
+  .hero .stagger > *:nth-child(4) { animation-delay: .32s; transform: translateY(16px); }
+  .hero .stagger > *:nth-child(5) { animation-delay: .41s; transform: translateY(16px); }
+  .hero .demo-col { opacity: 0; animation: rise .8s .3s forwards; transform: translateY(24px); }
+</style>
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <img src="chappie.png" alt="Chappie mascot" />
+      Chappie
+    </a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#rhythm">Rhythm</a>
+      <a href="#install">Install</a>
+      <a class="nav-cta" href="https://github.com/mic-360/chappie" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div class="hero-col stagger">
+        <div class="badge">
+          <span class="dot"></span>
+          v1.1.0 &nbsp;·&nbsp; Claude Code plugin
+        </div>
+        <h1>Claude types.<br /><span class="clk">You hear it.</span></h1>
+        <p class="lede">
+          Chappie plays realistic <strong>Blue Switch</strong> mechanical keyboard
+          sounds while Claude Code generates and runs tools — then a gentle
+          <span style="color:var(--amber)">alert ding</span> the moment it pauses
+          for your approval.
+        </p>
+        <div class="install" title="Click to copy">
+          <code id="installCmd"><span class="pfx">$ </span>claude --plugin-url https://github.com/mic-360/chappie</code>
+          <button id="copyBtn">COPY</button>
+        </div>
+        <div class="hero-actions">
+          <button class="btn primary" id="heroPlay">▶ &nbsp;Hear it type</button>
+          <button class="btn" id="heroAlert">◔ &nbsp;Play alert ding</button>
+          <a class="btn" href="#how">Read how it works</a>
+        </div>
+      </div>
+
+      <div class="demo-col">
+        <div class="demo">
+          <div class="demo-head">
+            <span class="ttl">CHAPPIE · LIVE PREVIEW</span>
+            <span class="traffic">
+              <i style="background:#ff5f56"></i>
+              <i style="background:#ffbd2e"></i>
+              <i style="background:#27c93f"></i>
+            </span>
+          </div>
+          <div class="scr">
+            <div><span class="who">claude ›</span> <span class="out" id="typeOut"></span><span class="caret" id="caret"></span></div>
+          </div>
+          <div class="state-row">
+            <div class="pill" data-state="start">start</div>
+            <div class="pill" data-state="typing">typing</div>
+            <div class="pill" data-state="alert">alert</div>
+            <div class="pill" data-state="stop">idle</div>
+          </div>
+          <div class="keyboard" id="keyboard"></div>
+          <div class="demo-hint">Tap any keycap — sound is synthesized live with the Web Audio API</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ FEATURES ============ -->
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="mono-label">// what's inside</span>
+      <h2>Everything Chappie does</h2>
+      <p>A complete tactile audio layer for Claude Code — engineered to feel like a real keyboard, not a metronome.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat span-blue reveal">
+        <div class="num">01</div>
+        <div class="ico">⌨</div>
+        <h3>Workaholic Rhythm</h3>
+        <p>A flow-state typing model — sprint / cruise / deliberate bursts, fast finger-rolls, in-word acceleration, and sentence-length cadence.</p>
+      </div>
+      <div class="feat span-amber reveal">
+        <div class="num">02</div>
+        <div class="ico">◔</div>
+        <h3>Permission Alert</h3>
+        <p>A gentle notification ding when Claude halts for your approval. Typing pauses instantly so the ding cuts through clean.</p>
+      </div>
+      <div class="feat reveal">
+        <div class="num">03</div>
+        <div class="ico">⬇</div>
+        <h3>Zero-Config Audio</h3>
+        <p>Six WAV assets download on first run via <code>curl</code>/<code>wget</code> and cache in <code>~/.claude/sounds/</code>. Nothing is embedded or shipped.</p>
+      </div>
+      <div class="feat reveal">
+        <div class="num">04</div>
+        <div class="ico">🦀</div>
+        <h3>Rust-Powered Daemon</h3>
+        <p>A cross-platform audio engine on <code>rodio</code> (WASAPI / CoreAudio / ALSA). Just two crates: <code>rodio</code> and <code>rand</code>.</p>
+      </div>
+      <div class="feat reveal">
+        <div class="num">05</div>
+        <div class="ico">🔋</div>
+        <h3>Windows EcoQoS</h3>
+        <p>The daemon opts into Windows efficiency mode and below-normal priority to stay light on battery and CPU.</p>
+      </div>
+      <div class="feat reveal">
+        <div class="num">06</div>
+        <div class="ico">⚓</div>
+        <h3>Native Hooks</h3>
+        <p>Driven entirely by Claude Code lifecycle hooks — <code>UserPromptSubmit</code>, <code>PreToolUse</code>, <code>Notification</code>, <code>Stop</code> and more.</p>
+      </div>
+      <div class="feat reveal">
+        <div class="num">07</div>
+        <div class="ico">✦</div>
+        <h3>Plugin Skills</h3>
+        <p>Built-in <code>/chappie:setup</code> to build &amp; configure the daemon, and <code>/chappie:status</code> to check its health.</p>
+      </div>
+      <div class="feat reveal">
+        <div class="num">08</div>
+        <div class="ico">⚙</div>
+        <h3>Fully Tunable</h3>
+        <p>Rhythm constants live at the top of <code>main.rs</code> — typo chance, pitch range, word length, idle shutdown. Tweak and rebuild.</p>
+      </div>
+      <div class="feat reveal">
+        <div class="num">09</div>
+        <div class="ico">⊟</div>
+        <h3>One Binary, No Scripts</h3>
+        <p>Hooks invoke the same compiled binary in a lightweight <code>signal</code> mode — identical behavior on Windows, macOS and Linux.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="mono-label">// architecture</span>
+      <h2>How it works</h2>
+      <p>Claude Code hooks fire a one-shot binary that writes a nonce-tagged signal file. A long-running Rust daemon polls it and reacts to every signal exactly once.</p>
+    </div>
+
+    <div class="flow-diagram reveal">
+      <div class="flow-node">
+        <div class="nt">Claude Code</div>
+        <div class="nm">Lifecycle Hooks</div>
+        <div class="nd">hooks.json fires on every event</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="flow-node">
+        <div class="nt">signal mode</div>
+        <div class="nm">.chappie_state/signal</div>
+        <div class="nd">writes "&lt;nonce&gt; &lt;signal&gt;"</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="flow-node accent">
+        <div class="nt">Rust daemon</div>
+        <div class="nm">chappie-daemon</div>
+        <div class="nd">polls, plays, single-instance lock</div>
+      </div>
+    </div>
+
+    <div class="tbl-shell reveal">
+      <table>
+        <thead>
+          <tr>
+            <th>Claude Code Event</th>
+            <th>Signal</th>
+            <th>Daemon Behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="k">UserPromptSubmit</span></td><td><span class="sig">start</span></td><td>Begin playing typing sounds</td></tr>
+          <tr><td><span class="k">PreToolUse</span></td><td><span class="sig">typing</span></td><td>Continue / resume typing sounds</td></tr>
+          <tr><td><span class="k">PostToolUse</span></td><td><span class="sig">typing</span></td><td>Continue / resume typing sounds</td></tr>
+          <tr><td><span class="k">Notification</span></td><td><span class="sig alert">alert</span></td><td>Pause typing → play alert ding → idle</td></tr>
+          <tr><td><span class="k">Stop</span></td><td><span class="sig">stop</span></td><td>Return to idle, silence</td></tr>
+          <tr><td><span class="k">SessionEnd</span></td><td><span class="sig">quit</span></td><td>Shut the daemon down immediately</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--faint);font-size:12.5px;margin-top:16px">
+      Each write carries a unique <strong>nonce</strong>, so concurrent hook invocations can never clobber an <code>alert</code> or <code>stop</code> — the daemon reacts to every signal exactly once.
+    </p>
+  </div>
+</section>
+
+<!-- ============ RHYTHM ============ -->
+<section id="rhythm">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="mono-label">// the typing engine</span>
+      <h2>A workaholic, not a metronome</h2>
+      <p>The daemon models a fast, fluent typist. It drifts between three flow states — re-rolled every 10–30 words and weighted heavily toward speed.</p>
+    </div>
+
+    <div class="rhythm-grid">
+      <div class="flow-state reveal">
+        <div class="label">Sprint</div>
+        <div class="ms">45 – 78 ms / key</div>
+        <div class="bar"><span style="width:92%"></span></div>
+        <p>Peak velocity. Fingers fly — short bursts of pure momentum.</p>
+      </div>
+      <div class="flow-state reveal">
+        <div class="label">Cruise</div>
+        <div class="ms">62 – 112 ms / key</div>
+        <div class="bar"><span style="width:64%"></span></div>
+        <p>The comfortable default — steady, fluent, sustainable pace.</p>
+      </div>
+      <div class="flow-state reveal">
+        <div class="label">Deliberate</div>
+        <div class="ms">95 – 175 ms / key</div>
+        <div class="bar"><span style="width:38%"></span></div>
+        <p>Slower, considered keystrokes — the rhythm of thinking it through.</p>
+      </div>
+    </div>
+
+    <div class="rhythm-traits">
+      <div class="trait reveal">
+        <span class="tg">↻</span>
+        <div><b>Finger rolls</b><small>Words occasionally open with a 2–4 key burst at ~30 ms.</small></div>
+      </div>
+      <div class="trait reveal">
+        <span class="tg">⟿</span>
+        <div><b>In-word acceleration</b><small>Slow on the first key, fastest mid-word, easing off at the end.</small></div>
+      </div>
+      <div class="trait reveal">
+        <span class="tg">⌫</span>
+        <div><b>Typo corrections</b><small>~6% of words trigger a fast backspace rattle and retype.</small></div>
+      </div>
+      <div class="trait reveal">
+        <span class="tg">≋</span>
+        <div><b>Cadence</b><small>Short word gaps, longer sentence breaths every 8–16 words.</small></div>
+      </div>
+    </div>
+
+    <div class="sec-head reveal" style="margin-top:56px;margin-bottom:24px">
+      <span class="mono-label">// tuning</span>
+      <h2 style="font-size:28px">Tune it to your taste</h2>
+      <p>Edit the constants at the top of <code>src/main.rs</code> and rebuild.</p>
+    </div>
+    <div class="tbl-shell reveal">
+      <table>
+        <thead>
+          <tr><th>Constant</th><th>Default</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="k">ROLL_CHANCE</span></td><td><span class="sig">0.22</span></td><td>Chance a word opens with a finger-roll</td></tr>
+          <tr><td><span class="k">TYPO_CHANCE</span></td><td><span class="sig">0.06</span></td><td>Chance of a typo + correction per word</td></tr>
+          <tr><td><span class="k">WORD_LEN_MIN / MAX</span></td><td><span class="sig">2 / 9</span></td><td>Word-length range (skewed short)</td></tr>
+          <tr><td><span class="k">MIN_PITCH / MAX_PITCH</span></td><td><span class="sig">0.92 / 1.08</span></td><td>Pitch randomization range</td></tr>
+          <tr><td><span class="k">MIN_VOLUME / MAX_VOLUME</span></td><td><span class="sig">0.62 / 1.0</span></td><td>Volume randomization range</td></tr>
+          <tr><td><span class="k">IDLE_SHUTDOWN_MS</span></td><td><span class="sig">15000</span></td><td>Idle time before the daemon self-exits</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INSTALL ============ -->
+<section id="install">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="mono-label">// get started</span>
+      <h2>Install in two moves</h2>
+      <p>Chappie ships Rust source that compiles once. The only prerequisite is the <a href="https://rustup.rs" target="_blank" rel="noopener" style="color:var(--blue)">Rust toolchain</a>.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="keycap">1</div>
+        <div>
+          <h3>Add the plugin</h3>
+          <p>Install straight from GitHub, a marketplace, or a local clone.</p>
+          <div class="codeblock"><span class="cmt"># from GitHub</span>
+<span class="cmd">claude</span> --plugin-url https://github.com/mic-360/chappie
+
+<span class="cmt"># from a marketplace</span>
+<span class="cmd">/plugin</span> install chappie@&lt;marketplace-name&gt;</div>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="keycap">2</div>
+        <div>
+          <h3>Build the daemon</h3>
+          <p>Run the built-in setup skill — it compiles the binary and verifies audio output.</p>
+          <div class="codeblock"><span class="cmd">/chappie:setup</span>
+<span class="cmt"># or build it manually</span>
+cargo build --release</div>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="keycap">▶</div>
+        <div>
+          <h3>That's it — start a session</h3>
+          <p>Hooks take over automatically. Check daemon health any time with the status skill.</p>
+          <div class="codeblock"><span class="cmd">/chappie:status</span>  <span class="cmt"># daemon · sound cache · signal state · log</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CREDITS ============ -->
+<section id="credits">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="mono-label">// sound sources &amp; credits</span>
+      <h2>Built on open audio</h2>
+      <p>Six WAV assets, downloaded once and cached locally. Each is used under its respective license.</p>
+    </div>
+    <div class="credit-grid">
+      <div class="credit reveal">
+        <div class="role">Key clicks ×4 + spacebar</div>
+        <h3>OpenClickSound</h3>
+        <p>Free, live-recorded mechanical key tones. &nbsp;·&nbsp; CC BY-NC 4.0</p>
+        <a href="https://github.com/Nigh/OpenClickSound" target="_blank" rel="noopener">Nigh/OpenClickSound ↗</a>
+      </div>
+      <div class="credit reveal">
+        <div class="role">Alert ding</div>
+        <h3>Notifications</h3>
+        <p>Hand-crafted notification tones. &nbsp;·&nbsp; CC0 / CC BY 3.0</p>
+        <a href="https://github.com/akx/Notifications" target="_blank" rel="noopener">akx/Notifications ↗</a>
+      </div>
+      <div class="credit reveal">
+        <div class="role">Audio engine</div>
+        <h3>rodio</h3>
+        <p>Cross-platform Rust audio playback by the RustAudio team.</p>
+        <a href="https://github.com/RustAudio/rodio" target="_blank" rel="noopener">RustAudio/rodio ↗</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-band">
+  <div class="wrap reveal">
+    <span class="mono-label">// ready?</span>
+    <h2>Give Claude a keyboard.</h2>
+    <p>Open-source, MIT-licensed, and lighter than a single browser tab. Your terminal has never sounded this good.</p>
+    <div class="hero-actions" style="justify-content:center">
+      <a class="btn primary" href="https://github.com/mic-360/chappie" target="_blank" rel="noopener">★ &nbsp;Star on GitHub</a>
+      <button class="btn" id="ctaPlay">▶ &nbsp;Hear the demo again</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <img src="chappie.png" alt="" />
+      Chappie
+    </a>
+    <div class="foot-links">
+      <a href="https://github.com/mic-360/chappie" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/mic-360/chappie/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+      <a href="https://code.claude.com/docs/en/plugins" target="_blank" rel="noopener">Claude Code Plugins</a>
+    </div>
+    <span>© 2026 Chappie · Made by <a href="https://github.com/mic-360" target="_blank" rel="noopener">mic-360</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Web Audio: synthesized mechanical click ---------- */
+  var AC = window.AudioContext || window.webkitAudioContext;
+  var ctx = null;
+  function audio() {
+    if (!ctx) ctx = new AC();
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+
+  // a short, snappy Blue-Switch-ish click: noise transient + pitched body
+  function playClick(opts) {
+    opts = opts || {};
+    var c = audio();
+    var t = c.currentTime;
+    var pitch = opts.pitch || (0.92 + Math.random() * 0.16);
+    var gainV = opts.gain || (0.5 + Math.random() * 0.4);
+
+    // noise burst (the "tick")
+    var len = Math.floor(c.sampleRate * 0.03);
+    var buf = c.createBuffer(1, len, c.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    }
+    var noise = c.createBufferSource();
+    noise.buffer = buf;
+    var nf = c.createBiquadFilter();
+    nf.type = "highpass";
+    nf.frequency.value = 1800 * pitch;
+    var ng = c.createGain();
+    ng.gain.setValueAtTime(gainV * 0.9, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+    noise.connect(nf); nf.connect(ng); ng.connect(c.destination);
+    noise.start(t); noise.stop(t + 0.04);
+
+    // pitched body (the "thock")
+    var osc = c.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(420 * pitch, t);
+    osc.frequency.exponentialRampToValueAtTime(150 * pitch, t + 0.045);
+    var og = c.createGain();
+    og.gain.setValueAtTime(gainV * 0.5, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    osc.connect(og); og.connect(c.destination);
+    osc.start(t); osc.stop(t + 0.07);
+  }
+
+  // pleasant two-note alert ding
+  function playAlert() {
+    var c = audio();
+    var t = c.currentTime;
+    [880, 1320].forEach(function (freq, idx) {
+      var o = c.createOscillator();
+      var g = c.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      var s = t + idx * 0.14;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(0.32, s + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.55);
+      o.connect(g); g.connect(c.destination);
+      o.start(s); o.stop(s + 0.6);
+    });
+  }
+
+  /* ---------- demo state pills ---------- */
+  var pills = document.querySelectorAll(".state-row .pill");
+  function setState(name) {
+    pills.forEach(function (p) {
+      p.classList.remove("on-blue", "on-amber");
+      if (p.dataset.state === name) {
+        p.classList.add(name === "alert" ? "on-amber" : "on-blue");
+      }
+    });
+  }
+  setState("stop");
+
+  /* ---------- build the demo keyboard ---------- */
+  var kb = document.getElementById("keyboard");
+  "QWERTYUIOP".split("").concat("ASDFGHJKL".split("")).forEach(function (ch) {
+    var k = document.createElement("div");
+    k.className = "keycap";
+    k.textContent = ch;
+    k.addEventListener("pointerdown", function () {
+      playClick();
+      k.classList.add("pressed");
+      setState("typing");
+    });
+    k.addEventListener("pointerup", function () { k.classList.remove("pressed"); });
+    k.addEventListener("pointerleave", function () { k.classList.remove("pressed"); });
+    kb.appendChild(k);
+  });
+  var space = document.createElement("div");
+  space.className = "keycap space";
+  space.textContent = "SPACEBAR";
+  space.addEventListener("pointerdown", function () {
+    playClick({ pitch: 0.78, gain: 0.85 });
+    space.classList.add("pressed");
+    setState("typing");
+  });
+  space.addEventListener("pointerup", function () { space.classList.remove("pressed"); });
+  kb.appendChild(space);
+
+  /* ---------- typewriter demo ---------- */
+  var out = document.getElementById("typeOut");
+  var caret = document.getElementById("caret");
+  var phrase = "Compiling the audio daemon... rodio stream ready. Listening for hooks.";
+  var running = false;
+
+  function flashKey() {
+    var keys = kb.querySelectorAll(".keycap");
+    var k = keys[Math.floor(Math.random() * keys.length)];
+    k.classList.add("pressed");
+    setTimeout(function () { k.classList.remove("pressed"); }, 70);
+  }
+
+  function typeDemo() {
+    if (running) return;
+    running = true;
+    out.textContent = "";
+    setState("start");
+    caret.classList.remove("alerting");
+    var i = 0;
+    (function tick() {
+      if (i < phrase.length) {
+        var ch = phrase[i++];
+        out.textContent += ch;
+        if (ch !== " ") { playClick(); flashKey(); }
+        setState("typing");
+        // human-ish cadence: longer pause after punctuation
+        var delay = 38 + Math.random() * 70;
+        if (ch === "." || ch === ",") delay += 260;
+        if (ch === " ") delay += 30;
+        setTimeout(tick, delay);
+      } else {
+        // finish with an alert ding
+        setTimeout(function () {
+          setState("alert");
+          caret.classList.add("alerting");
+          playAlert();
+          setTimeout(function () {
+            setState("stop");
+            caret.classList.remove("alerting");
+            running = false;
+          }, 1100);
+        }, 420);
+      }
+    })();
+  }
+
+  document.getElementById("heroPlay").addEventListener("click", typeDemo);
+  document.getElementById("ctaPlay").addEventListener("click", function () {
+    document.getElementById("top").scrollIntoView({ behavior: "smooth" });
+    setTimeout(typeDemo, 600);
+  });
+  document.getElementById("heroAlert").addEventListener("click", function () {
+    setState("alert");
+    caret.classList.add("alerting");
+    playAlert();
+    setTimeout(function () {
+      setState("stop");
+      caret.classList.remove("alerting");
+    }, 1100);
+  });
+
+  // idle preview text
+  out.textContent = "ready — press “Hear it type”";
+
+  /* ---------- copy install command ---------- */
+  var copyBtn = document.getElementById("copyBtn");
+  copyBtn.addEventListener("click", function () {
+    var cmd = "claude --plugin-url https://github.com/mic-360/chappie";
+    navigator.clipboard.writeText(cmd).then(function () {
+      copyBtn.textContent = "COPIED";
+      playClick();
+      setTimeout(function () { copyBtn.textContent = "COPY"; }, 1600);
+    }).catch(function () {
+      copyBtn.textContent = "COPY ✗";
+      setTimeout(function () { copyBtn.textContent = "COPY"; }, 1600);
+    });
+  });
+
+  /* ---------- scroll reveal ---------- */
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) {
+        e.target.classList.add("in");
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+})();
+</script>
+</body>
+</html>
