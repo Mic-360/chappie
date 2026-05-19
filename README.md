@@ -25,6 +25,9 @@
 
 ## Installation <img src="chappie.png" width="40" align="right">
 
+Chappie needs **no build step and no Rust toolchain**. Install the plugin, and
+the audio daemon downloads itself automatically the next time a Claude Code
+session starts.
 
 ### From a Marketplace
 
@@ -34,35 +37,44 @@ If a marketplace includes Chappie:
 /plugin install chappie@<marketplace-name>
 ```
 
-### From GitHub
+### From this repository's marketplace
 
 ```
-claude --plugin-url https://github.com/mic-360/chappie
+/plugin marketplace add Mic-360/chappie
+/plugin install chappie@chappie-marketplace
 ```
 
-### From a Local Directory
+### From GitHub directly
+
+```
+claude --plugin-url https://github.com/Mic-360/chappie
+```
+
+### That's it
+
+After installing, **do nothing else**. On the next session, Chappie's
+`SessionStart` hook runs a small bootstrap script that downloads the prebuilt
+`chappie-daemon` binary for your platform (Windows, Linux, or macOS — Intel or
+ARM) from the [GitHub Releases](https://github.com/Mic-360/chappie/releases)
+and caches it inside the plugin. Start typing with Claude and you will hear it.
+
+If Chappie stays silent, run `/chappie:setup` to repair the install, or check
+`/chappie:status`. The bootstrap log lives at
+`~/.claude/.chappie_state/bootstrap.log`.
+
+### Build from source (contributors only)
+
+You only need this if you are developing Chappie or are offline with no
+published release available. It requires the [Rust toolchain](https://rustup.rs):
 
 ```bash
-git clone https://github.com/mic-360/chappie.git
-claude --plugin-dir ./chappie
-```
-
-### After Installation — Build the Daemon
-
-The plugin ships Rust source code that must be compiled once:
-
-```bash
-# Option 1: Use the built-in setup skill
-/chappie:setup
-
-# Option 2: Manual build
-cd <plugin-directory>
+git clone https://github.com/Mic-360/chappie.git
+cd chappie
 cargo build --release
 ```
 
-> **Prerequisite:** [Rust toolchain](https://rustup.rs) must be installed.
-> No shell scripts are involved — the hooks invoke the compiled binary
-> directly, so it behaves identically on Windows, macOS, and Linux.
+The bootstrap script also falls back to `cargo build` automatically if a
+download fails and Rust is installed.
 
 ---
 
@@ -73,15 +85,23 @@ chappie/
 ├── .claude-plugin/
 │   ├── plugin.json            # Plugin manifest (name, version, author, etc.)
 │   └── marketplace.json       # Marketplace definition for distribution
+├── .github/
+│   └── workflows/
+│       └── release.yml        # CI: builds & publishes prebuilt binaries
 ├── hooks/
 │   └── hooks.json             # Claude Code lifecycle hook definitions
+├── scripts/
+│   ├── chappie-bootstrap.sh   # Auto-download the daemon (Linux/macOS)
+│   └── chappie-bootstrap.cmd  # Auto-download the daemon (Windows)
 ├── skills/
 │   ├── setup/
-│   │   └── SKILL.md           # /chappie:setup — build & configure the daemon
+│   │   └── SKILL.md           # /chappie:setup — repair / reinstall the daemon
 │   └── status/
 │       └── SKILL.md           # /chappie:status — check daemon health
 ├── src/
 │   └── main.rs                # Rust audio daemon + `signal` hook entry point
+├── docs/
+│   └── RELEASING.md           # Maintainer release guide
 ├── Cargo.toml                 # Rust project manifest
 ├── LICENSE                    # MIT + third-party attribution
 ├── .gitignore
@@ -114,9 +134,13 @@ chappie/
 ```
 
 The hooks invoke the **same compiled binary** in a lightweight `signal` mode
-(`chappie-daemon signal <name>`) — no shell scripts, so the behavior is
-identical on Windows, macOS, and Linux. That invocation writes the signal file
-and launches the daemon if it is not already running.
+(`chappie-daemon signal <name>`). The binary itself is platform-specific, but
+it is fetched automatically: a `SessionStart` hook runs one of two paired
+bootstrap scripts — `scripts/chappie-bootstrap.sh` on Linux/macOS and
+`scripts/chappie-bootstrap.cmd` on Windows. Whichever script does not match the
+host fails harmlessly, so the correct one always runs. Each script resolves its
+paths relative to the plugin directory, so the behavior is identical wherever
+Claude Code installs the plugin.
 
 Each write carries a unique **nonce**, so the daemon reacts to every signal
 exactly once and never has to clear the file — concurrent hook invocations can
@@ -228,7 +252,7 @@ Submit at:
 This repo includes `.claude-plugin/marketplace.json`. To use it as a marketplace:
 
 ```
-/plugin marketplace add mic-360/chappie
+/plugin marketplace add Mic-360/chappie
 /plugin install chappie@chappie-marketplace
 ```
 
@@ -241,7 +265,7 @@ Add to your team's `marketplace.json`:
   "name": "chappie",
   "source": {
     "source": "github",
-    "repo": "mic-360/chappie"
+    "repo": "Mic-360/chappie"
   },
   "description": "Mechanical keyboard sounds for Claude Code",
   "category": "productivity",
