@@ -1,42 +1,51 @@
 ---
 name: setup
-description: Build and configure the Chappie audio daemon. Run this after installing the plugin to compile the Rust binary and verify audio output works.
+description: Repair or reinstall the Chappie audio daemon. Use this if Chappie is silent, the daemon binary is missing, or you want to force a fresh download or a build from source.
 ---
 
-# Chappie Setup
+# Chappie Setup / Repair
 
-You are setting up the Chappie mechanical keyboard sound plugin.
+Chappie installs its audio daemon automatically the first time a session
+starts (via the `SessionStart` bootstrap hook). Use this skill only when that
+automatic install did not work or you want to reinstall.
 
 ## Steps
 
-1. **Check Rust toolchain**: Verify that `rustc` and `cargo` are installed by running `rustc --version` and `cargo --version`. If not installed, tell the user to install from https://rustup.rs.
-
-2. **Build the daemon**: Navigate to `${CLAUDE_PLUGIN_ROOT}` and run:
-   ```
-   cargo build --release
-   ```
-   This compiles the `chappie-daemon` binary for the current platform.
-
-3. **Verify the binary**: Check that the compiled binary exists:
+1. **Check what is already there**: Look for the compiled binary:
    - Linux/macOS: `${CLAUDE_PLUGIN_ROOT}/target/release/chappie-daemon`
    - Windows: `${CLAUDE_PLUGIN_ROOT}/target/release/chappie-daemon.exe`
 
-   The plugin's hooks invoke this binary directly (as `chappie-daemon signal <name>`),
-   so there are no shell scripts to make executable — it works the same on
-   Windows, macOS, and Linux.
+   Read the bootstrap log at `~/.claude/.chappie_state/bootstrap.log` to see
+   what the last automatic attempt did.
 
-4. **Test the daemon**: Send a signal — this writes the signal file *and*
+2. **Force a fresh download**: Delete the binary if present, then re-run the
+   bootstrap script for the current OS:
+   - Linux/macOS: `sh "${CLAUDE_PLUGIN_ROOT}/scripts/chappie-bootstrap.sh"`
+   - Windows: `"${CLAUDE_PLUGIN_ROOT}/scripts/chappie-bootstrap.cmd"`
+
+   This downloads the prebuilt binary for the user's platform from the GitHub
+   Releases of `Mic-360/chappie`. No Rust toolchain is required.
+
+3. **Build from source (fallback)**: Only if the download fails (for example,
+   no network or no release published yet) and the user has Rust installed.
+   Verify with `cargo --version`, then in `${CLAUDE_PLUGIN_ROOT}` run:
+   ```
+   cargo build --release
+   ```
+   If Rust is not installed, point the user to https://rustup.rs.
+
+4. **Test the daemon**: Send a signal — this writes the signal file and
    launches the daemon if it is not already running:
    ```
    ${CLAUDE_PLUGIN_ROOT}/target/release/chappie-daemon signal start
    ```
-   You should hear mechanical keyboard typing sounds within a second or two
-   (sound assets are downloaded and cached on the first run). Silence it with:
+   You should hear mechanical keyboard typing within a second or two (sound
+   assets are downloaded and cached on first run). Silence it with:
    ```
    ${CLAUDE_PLUGIN_ROOT}/target/release/chappie-daemon signal quit
    ```
 
-5. **Confirm**: Report whether the build succeeded and audio playback works.
+5. **Confirm**: Report whether the binary is in place and audio playback works.
 
-If any step fails, diagnose the issue and help the user resolve it. The daemon
-logs to `~/.claude/.chappie_state/daemon.log`.
+The daemon logs to `~/.claude/.chappie_state/daemon.log`; the bootstrap logs to
+`~/.claude/.chappie_state/bootstrap.log`.
