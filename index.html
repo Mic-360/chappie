@@ -650,7 +650,7 @@
       <a href="#how">How it works</a>
       <a href="#rhythm">Rhythm</a>
       <a href="#install">Install</a>
-      <a class="nav-cta" href="https://github.com/mic-360/chappie" target="_blank" rel="noopener">GitHub ↗</a>
+      <a class="nav-cta" href="https://github.com/Mic-360/chappie" target="_blank" rel="noopener">GitHub ↗</a>
     </div>
   </div>
 </nav>
@@ -672,7 +672,7 @@
           for your approval.
         </p>
         <div class="install" title="Click to copy">
-          <code id="installCmd"><span class="pfx">$ </span>claude --plugin-url https://github.com/mic-360/chappie</code>
+          <code id="installCmd"><span class="pfx">$ </span>claude --plugin-url https://github.com/Mic-360/chappie</code>
           <button id="copyBtn">COPY</button>
         </div>
         <div class="hero-actions">
@@ -758,7 +758,7 @@
         <div class="num">07</div>
         <div class="ico">✦</div>
         <h3>Plugin Skills</h3>
-        <p>Built-in <code>/chappie:setup</code> to build &amp; configure the daemon, and <code>/chappie:status</code> to check its health.</p>
+        <p>Built-in <code>/chappie:setup</code> to repair or reinstall the daemon, and <code>/chappie:status</code> to check its health.</p>
       </div>
       <div class="feat reveal">
         <div class="num">08</div>
@@ -768,9 +768,9 @@
       </div>
       <div class="feat reveal">
         <div class="num">09</div>
-        <div class="ico">⊟</div>
-        <h3>One Binary, No Scripts</h3>
-        <p>Hooks invoke the same compiled binary in a lightweight <code>signal</code> mode — identical behavior on Windows, macOS and Linux.</p>
+        <div class="ico">📦</div>
+        <h3>Zero-Build Install</h3>
+        <p>On first session a prebuilt daemon downloads itself for your OS — Windows, macOS or Linux, Intel or ARM. No Rust toolchain, no build step.</p>
       </div>
     </div>
   </div>
@@ -907,38 +907,38 @@
   <div class="wrap">
     <div class="sec-head reveal">
       <span class="mono-label">// get started</span>
-      <h2>Install in two moves</h2>
-      <p>Chappie ships Rust source that compiles once. The only prerequisite is the <a href="https://rustup.rs" target="_blank" rel="noopener" style="color:var(--blue)">Rust toolchain</a>.</p>
+      <h2>Install in one move</h2>
+      <p>Add the plugin — the Rust audio daemon downloads itself as a prebuilt binary on your next session. No build step, no <a href="https://rustup.rs" target="_blank" rel="noopener" style="color:var(--blue)">Rust toolchain</a> required.</p>
     </div>
     <div class="steps">
       <div class="step reveal">
         <div class="keycap">1</div>
         <div>
           <h3>Add the plugin</h3>
-          <p>Install straight from GitHub, a marketplace, or a local clone.</p>
-          <div class="codeblock"><span class="cmt"># from GitHub</span>
-<span class="cmd">claude</span> --plugin-url https://github.com/mic-360/chappie
+          <p>Install straight from GitHub, or from this repository's marketplace.</p>
+          <div class="codeblock"><span class="cmt"># straight from GitHub</span>
+<span class="cmd">claude</span> --plugin-url https://github.com/Mic-360/chappie
 
-<span class="cmt"># from a marketplace</span>
-<span class="cmd">/plugin</span> install chappie@&lt;marketplace-name&gt;</div>
+<span class="cmt"># or via the marketplace</span>
+<span class="cmd">/plugin</span> marketplace add Mic-360/chappie
+<span class="cmd">/plugin</span> install chappie@chappie-marketplace</div>
         </div>
       </div>
       <div class="step reveal">
         <div class="keycap">2</div>
         <div>
-          <h3>Build the daemon</h3>
-          <p>Run the built-in setup skill — it compiles the binary and verifies audio output.</p>
-          <div class="codeblock"><span class="cmd">/chappie:setup</span>
-<span class="cmt"># or build it manually</span>
-cargo build --release</div>
+          <h3>Start a session — that's it</h3>
+          <p>On the next session, Chappie's <code>SessionStart</code> hook downloads the prebuilt daemon for your platform and caches it. No build, no Rust.</p>
+          <div class="codeblock"><span class="cmt"># nothing to run — just start typing with Claude</span></div>
         </div>
       </div>
       <div class="step reveal">
         <div class="keycap">▶</div>
         <div>
-          <h3>That's it — start a session</h3>
-          <p>Hooks take over automatically. Check daemon health any time with the status skill.</p>
-          <div class="codeblock"><span class="cmd">/chappie:status</span>  <span class="cmt"># daemon · sound cache · signal state · log</span></div>
+          <h3>Check health or repair</h3>
+          <p>Inspect the daemon any time — or force a fresh reinstall if it ever stays silent.</p>
+          <div class="codeblock"><span class="cmd">/chappie:status</span>  <span class="cmt"># daemon · sound cache · signal state · log</span>
+<span class="cmd">/chappie:setup</span>   <span class="cmt"># repair / reinstall the daemon</span></div>
         </div>
       </div>
     </div>
@@ -983,7 +983,7 @@ cargo build --release</div>
     <h2>Give Claude a keyboard.</h2>
     <p>Open-source, MIT-licensed, and lighter than a single browser tab. Your terminal has never sounded this good.</p>
     <div class="hero-actions" style="justify-content:center">
-      <a class="btn primary" href="https://github.com/mic-360/chappie" target="_blank" rel="noopener">★ &nbsp;Star on GitHub</a>
+      <a class="btn primary" href="https://github.com/Mic-360/chappie" target="_blank" rel="noopener">★ &nbsp;Star on GitHub</a>
       <button class="btn" id="ctaPlay">▶ &nbsp;Hear the demo again</button>
     </div>
   </div>
@@ -997,11 +997,11 @@ cargo build --release</div>
       Chappie
     </a>
     <div class="foot-links">
-      <a href="https://github.com/mic-360/chappie" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://github.com/mic-360/chappie/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+      <a href="https://github.com/Mic-360/chappie" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/Mic-360/chappie/blob/master/LICENSE" target="_blank" rel="noopener">MIT License</a>
       <a href="https://code.claude.com/docs/en/plugins" target="_blank" rel="noopener">Claude Code Plugins</a>
     </div>
-    <span>© 2026 Chappie · Made by <a href="https://github.com/mic-360" target="_blank" rel="noopener">mic-360</a></span>
+    <span>© 2026 Chappie · Made by <a href="https://github.com/Mic-360" target="_blank" rel="noopener">Mic-360</a></span>
   </div>
 </footer>
 
@@ -1180,7 +1180,7 @@ cargo build --release</div>
   /* ---------- copy install command ---------- */
   var copyBtn = document.getElementById("copyBtn");
   copyBtn.addEventListener("click", function () {
-    var cmd = "claude --plugin-url https://github.com/mic-360/chappie";
+    var cmd = "claude --plugin-url https://github.com/Mic-360/chappie";
     navigator.clipboard.writeText(cmd).then(function () {
       copyBtn.textContent = "COPIED";
       playClick();
