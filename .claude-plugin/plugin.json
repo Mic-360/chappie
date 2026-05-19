@@ -5,10 +5,10 @@
   "description": "Dynamic mechanical keyboard (Blue Switch) sound effects for Claude Code. Plays realistic typing sounds while Claude generates responses, pauses on permission requests with an alert ding.",
   "author": {
     "name": "Bhaumic",
-    "url": "https://github.com/mic-360"
+    "url": "https://github.com/Mic-360"
   },
-  "homepage": "https://github.com/mic-360/chappie",
-  "repository": "https://github.com/mic-360/chappie",
+  "homepage": "https://github.com/Mic-360/chappie",
+  "repository": "https://github.com/Mic-360/chappie",
   "license": "MIT",
   "keywords": [
     "audio",
