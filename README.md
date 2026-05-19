@@ -56,7 +56,7 @@ After installing, **do nothing else**. On the next session, Chappie's
 `SessionStart` hook runs a small bootstrap script that downloads the prebuilt
 `chappie-daemon` binary for your platform (Windows, Linux, or macOS — Intel or
 ARM) from the [GitHub Releases](https://github.com/Mic-360/chappie/releases)
-and caches it inside the plugin. Start typing with Claude and you will hear it.
+and caches it inside the plugin. From that session onward, start typing with Claude and you will hear it.
 
 If Chappie stays silent, run `/chappie:setup` to repair the install, or check
 `/chappie:status`. The bootstrap log lives at
@@ -137,8 +137,9 @@ The hooks invoke the **same compiled binary** in a lightweight `signal` mode
 (`chappie-daemon signal <name>`). The binary itself is platform-specific, but
 it is fetched automatically: a `SessionStart` hook runs one of two paired
 bootstrap scripts — `scripts/chappie-bootstrap.sh` on Linux/macOS and
-`scripts/chappie-bootstrap.cmd` on Windows. Whichever script does not match the
-host fails harmlessly, so the correct one always runs. Each script resolves its
+`scripts/chappie-bootstrap.cmd` on Windows. The script that does not match the
+host exits without effect (it may write a harmless error to the hook's
+output), so only the correct one does any work. Each script resolves its
 paths relative to the plugin directory, so the behavior is identical wherever
 Claude Code installs the plugin.
 

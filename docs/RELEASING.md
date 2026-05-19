@@ -25,7 +25,7 @@ Nothing — `.github/workflows/release.yml` already has the
 3. Tag and push:
    ```bash
    git tag vX.Y.Z
-   git push origin main --tags
+   git push origin HEAD --tags
    ```
 
 4. The `Release` workflow runs automatically on the `vX.Y.Z` tag. It builds
