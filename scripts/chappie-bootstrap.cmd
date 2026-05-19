@@ -36,8 +36,11 @@ if exist "%TMP%" for %%A in ("%TMP%") do if %%~zA GTR 0 set "DLOK=1"
 
 if defined DLOK (
   move /y "%TMP%" "%BIN%" >nul 2>&1
-  echo [chappie-bootstrap] installed %BIN% >> "%LOG%"
-  exit /b 0
+  if exist "%BIN%" (
+    echo [chappie-bootstrap] installed %BIN% >> "%LOG%"
+    exit /b 0
+  )
+  echo [chappie-bootstrap] move into place failed >> "%LOG%"
 )
 
 if exist "%TMP%" del /f /q "%TMP%" >nul 2>&1
