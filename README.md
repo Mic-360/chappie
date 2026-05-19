@@ -232,7 +232,7 @@ sleep 5
 ```bash
 claude --plugin-dir ./chappie
 # Then use:
-#   /chappie:setup    — compile the daemon
+#   /chappie:setup    — repair / reinstall the daemon
 #   /chappie:status   — check daemon health
 ```
 
